@@ -37,6 +37,7 @@ The program relies on the following system libraries:
 - `<arpa/inet.h>`: For working with IP addresses.
 - `<signal.h>`: For signal handling.
 - `<getopt.h>`: For parsing command-line options.
+- `<unistd.h>`: For usleep function.
 
 Ensure your development environment includes these headers.
 

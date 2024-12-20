@@ -5,6 +5,7 @@
 #include <arpa/inet.h> /* for INET_ADDRSTRLEN, AF_INET, sockaddr */
 #include <signal.h>    /* for sigemptyset(), sigaction() */
 #include <getopt.h>    /* for option, required_argument, getopt_long(), optarg */
+#include <unistd.h>    /* for usleep() */
 
 #define SLEEP_INTERVAL 50000
 
