@@ -43,7 +43,7 @@ Ensure your development environment includes these headers.
 
 ## Notes
 - The program uses a polling interval of `50ms` (defined by `SLEEP_INTERVAL`) to minimize resource usage while continuously checking for the interface.
-- The `find_iface_name` function relies on IPv4 addresses. IPv6 support is not implemented.
+- The `get-iface-name` function relies on IPv4 addresses. IPv6 support is not implemented.
 
 ## License
 This program is licensed under the MIT License. See `LICENSE` for more details.

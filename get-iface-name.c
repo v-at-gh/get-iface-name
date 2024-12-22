@@ -10,6 +10,37 @@
 #define SLEEP_INTERVAL 50000
 
 volatile sig_atomic_t interrupted = 0;
+void handle_sigint(int);
+void print_usage(const char*);
+char *find_iface_name(const char*);
+char *parse_arguments(int, char**);
+
+int main(int argc, char *argv[]) {
+	struct sigaction sa;
+	char *ip_address = NULL;
+	ip_address = parse_arguments(argc, argv);
+
+	sa.sa_handler = handle_sigint;
+	sa.sa_flags = 0;
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGINT, &sa, NULL);
+	char *iface = NULL;
+
+	while (!interrupted) {
+		iface = find_iface_name(ip_address);
+		if (iface != NULL) break;
+		usleep(SLEEP_INTERVAL);
+	}
+
+	if (interrupted) {
+		free(iface); free(ip_address);
+		return EXIT_FAILURE;
+	}
+
+	printf("%s\n", iface);
+	free(iface); free(ip_address);
+	return EXIT_SUCCESS;
+}
 
 void handle_sigint(int signum) {
 	(void)signum;
@@ -48,17 +79,9 @@ void print_usage(const char *prog_name) {
 	printf("Usage: %s [-a|--address <IP_ADDRESS>]\n", prog_name);
 }
 
-int main(int argc, char *argv[]) {
-	char *ip_address = NULL;
-	char *iface = NULL;
-	struct sigaction sa;
-
-	sa.sa_handler = handle_sigint;
-	sa.sa_flags = 0;
-	sigemptyset(&sa.sa_mask);
-	sigaction(SIGINT, &sa, NULL);
-
+char *parse_arguments(int argc, char *argv[]) {
 	int opt;
+	char *ip_address = NULL;
 	struct option long_options[] = {
 		{"address", required_argument, 0, 'a'},
 		{0, 0, 0, 0}
@@ -69,29 +92,27 @@ int main(int argc, char *argv[]) {
 			case 'a':
 				ip_address = strdup(optarg);
 				break;
+			case '?':
+				print_usage(argv[0]);
+				exit(EXIT_FAILURE);
 			default:
 				print_usage(argv[0]);
-				return 1;
+				exit(EXIT_FAILURE);
 		}
 	}
 
 	if (!ip_address) {
+		fprintf(stderr, "Error: IP address not provided.\n");
 		print_usage(argv[0]);
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
-	while (!interrupted) {
-		iface = find_iface_name(ip_address);
-		if (iface != NULL) break;
-		usleep(SLEEP_INTERVAL);
+	struct sockaddr_in sa;
+	if (inet_pton(AF_INET, ip_address, &(sa.sin_addr)) <= 0) {
+		fprintf(stderr, "Error: Invalid IP address format '%s'.\n", ip_address);
+		free(ip_address);
+		exit(EXIT_FAILURE);
 	}
 
-	if (interrupted) {
-		free(iface); free(ip_address);
-		return 1;
-	}
-
-	printf("%s\n", iface);
-	free(iface); free(ip_address);
-	return 0;
+	return ip_address;
 }
