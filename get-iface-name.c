@@ -2,7 +2,7 @@
 #include <stdlib.h>    /* for free()*/
 #include <string.h>    /* for strcmp(), strdup() */
 #include <ifaddrs.h>   /* for ifaddrs, getifaddrs(), freeifaddrs() */
-#include <arpa/inet.h> /* for INET_ADDRSTRLEN, AF_INET, sockaddr */
+#include <arpa/inet.h> /* for INET_ADDRSTRLEN, AF_INET, sockaddr, inet_pton() */
 #include <signal.h>    /* for sigemptyset(), sigaction() */
 #include <getopt.h>    /* for option, required_argument, getopt_long(), optarg */
 #include <unistd.h>    /* for usleep() */
@@ -10,22 +10,22 @@
 #define SLEEP_INTERVAL 50000
 
 volatile sig_atomic_t interrupted = 0;
-void handle_sigint(int);
+char *parse_arguments(int, char *argv[]);
 void print_usage(const char*);
+void handle_sigint(int);
 char *find_iface_name(const char*);
-char *parse_arguments(int, char**);
 
 int main(int argc, char *argv[]) {
-	struct sigaction sa;
 	char *ip_address = NULL;
 	ip_address = parse_arguments(argc, argv);
 
+	struct sigaction sa;
 	sa.sa_handler = handle_sigint;
 	sa.sa_flags = 0;
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGINT, &sa, NULL);
-	char *iface = NULL;
 
+	char *iface = NULL;
 	while (!interrupted) {
 		iface = find_iface_name(ip_address);
 		if (iface != NULL) break;
@@ -40,43 +40,6 @@ int main(int argc, char *argv[]) {
 	printf("%s\n", iface);
 	free(iface); free(ip_address);
 	return EXIT_SUCCESS;
-}
-
-void handle_sigint(int signum) {
-	(void)signum;
-	printf("\nScript interrupted. Exiting...\n");
-	interrupted = 1;
-}
-
-char *find_iface_name(const char *ip_address) {
-	struct ifaddrs *ifaddr, *ifa;
-	char addr[INET_ADDRSTRLEN];
-	char *iface_name = NULL;
-
-	if (getifaddrs(&ifaddr) == -1) {
-		perror("getifaddrs");
-		return NULL;
-	}
-
-	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-		if (ifa->ifa_addr == NULL) continue;
-		if (ifa->ifa_addr->sa_family == AF_INET) {
-			struct sockaddr_in *sa = (struct sockaddr_in *)ifa->ifa_addr;
-			inet_ntop(AF_INET, &sa->sin_addr, addr, sizeof(addr));
-
-			if (strcmp(addr, ip_address) == 0) {
-				iface_name = strdup(ifa->ifa_name);
-				break;
-			}
-		}
-	}
-
-	freeifaddrs(ifaddr);
-	return iface_name;
-}
-
-void print_usage(const char *prog_name) {
-	printf("Usage: %s [-a|--address <IP_ADDRESS>]\n", prog_name);
 }
 
 char *parse_arguments(int argc, char *argv[]) {
@@ -115,4 +78,41 @@ char *parse_arguments(int argc, char *argv[]) {
 	}
 
 	return ip_address;
+}
+
+void print_usage(const char *prog_name) {
+	printf("Usage: %s [-a|--address <IP_ADDRESS>]\n", prog_name);
+}
+
+void handle_sigint(int signum) {
+	(void)signum;
+	printf("\nScript interrupted. Exiting...\n");
+	interrupted = 1;
+}
+
+char *find_iface_name(const char *ip_address) {
+	struct ifaddrs *ifaddr, *ifa;
+	char addr[INET_ADDRSTRLEN];
+	char *iface_name = NULL;
+
+	if (getifaddrs(&ifaddr) == -1) {
+		perror("getifaddrs");
+		return NULL;
+	}
+
+	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+		if (ifa->ifa_addr == NULL) continue;
+		if (ifa->ifa_addr->sa_family == AF_INET) {
+			struct sockaddr_in *sa = (struct sockaddr_in *)ifa->ifa_addr;
+			inet_ntop(AF_INET, &sa->sin_addr, addr, sizeof(addr));
+
+			if (strcmp(addr, ip_address) == 0) {
+				iface_name = strdup(ifa->ifa_name);
+				break;
+			}
+		}
+	}
+
+	freeifaddrs(ifaddr);
+	return iface_name;
 }
